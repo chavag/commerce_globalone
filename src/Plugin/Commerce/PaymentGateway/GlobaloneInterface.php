@@ -2,7 +2,7 @@
 
 namespace Drupal\commerce_globalone\Plugin\Commerce\PaymentGateway;
 
-use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OnsitePaymentGatewayInterface;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\PaymentGatewayInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsAuthorizationsInterface;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterface;
 
@@ -19,6 +19,6 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsRefundsInterf
  * the gateway has. The gateway plugin is free to expose additional methods,
  * which would be defined below.
  */
-interface OnsiteInterface extends OnsitePaymentGatewayInterface, SupportsAuthorizationsInterface, SupportsRefundsInterface {
+interface GlobaloneInterface extends PaymentGatewayInterface, SupportsAuthorizationsInterface, SupportsRefundsInterface,SupportsStoredPaymentMethodsInterface {
 
 }

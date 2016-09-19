@@ -9,7 +9,7 @@ use Drupal\commerce_payment\Exception\HardDeclineException;
 use Drupal\commerce_payment\Exception\InvalidRequestException;
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
-use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OnsitePaymentGatewayBase;
+use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\PaymentGatewayBase;
 use Drupal\commerce_price\Price;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -18,11 +18,11 @@ use Drupal\Core\Form\FormStateInterface;
  * Provides the Onsite payment gateway.
  *
  * @CommercePaymentGateway(
- *   id = "example_onsite",
- *   label = "Example (Onsite)",
- *   display_label = "Example (Onsite)",
+ *   id = "globalone",
+ *   label = "Globalone",
+ *   display_label = "Globalone",
  *    forms = {
- *     "add-payment-method" = "Drupal\commerce_payment_example\PluginForm\Onsite\PaymentMethodAddForm",
+ *     "add-payment-method" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentMethodAddForm",
  *   },
  *   payment_method_types = {"credit_card"},
  *   credit_card_types = {
@@ -30,7 +30,7 @@ use Drupal\Core\Form\FormStateInterface;
  *   },
  * )
  */
-class Onsite extends OnsitePaymentGatewayBase implements OnsiteInterface {
+class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
 
   /**
    * {@inheritdoc}
