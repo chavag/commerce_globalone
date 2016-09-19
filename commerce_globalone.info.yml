@@ -1,0 +1,7 @@
+name: Commerce Globalone payment
+type: module
+description: 'Provides Globalone payment gateway .'
+package: Commerce
+core: 8.x
+dependencies:
+  - commerce_payment
