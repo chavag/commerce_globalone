@@ -13,7 +13,7 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
   protected function buildCreditCardForm(array $element, FormStateInterface $form_state) {
     $element = parent::buildCreditCardForm($element, $form_state);
     // Default to a known valid test credit card number.
-    $element['number']['#default_value'] = '4555';
+    $element['number']['#default_value'] = '4444333322221111';
 
     return $element;
   }
