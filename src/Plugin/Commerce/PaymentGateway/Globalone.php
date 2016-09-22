@@ -46,9 +46,23 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
    * {@inheritdoc}
    */
   public function defaultConfiguration() {
+
     return [
-      'api_key' => '',
+      'terminal' => [
+        'terminal_path' => 'estore/terminal',
+      ],
+      'live' => [
+        'currency' => '',
+        'terminal_id' => '',
+        'secret' => '',
+      ],
+      'test' => [
+        'terminal_id' => '33001',
+      ],
+      'card_types' => [],
+      'log' => ['request' => '0', 'response' => '0'],
     ] + parent::defaultConfiguration();
+
   }
 
   /**
@@ -57,13 +71,135 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
     $form = parent::buildConfigurationForm($form, $form_state);
 
-    // Example credential. Also needs matching schema in
-    // config/schema/$your_module.schema.yml.
-    $form['api_key'] = [
+    $form['test'] = [
+      '#type' => 'container',
+      '#title' => $this->t('test cards'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+      '#states' => [
+        'visible' => [
+          ':input[id="edit-configuration-mode-test"]' => array('checked' => TRUE),
+        ],
+      ],
+    ];
+
+    $form['test']['cards_info'] = [
+      '#type' => 'fieldset',
+      '#title' => $this->t('Test cards numbers'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+    ];
+
+    $form['test']['cards_info']['cards_no'] = [
+      '#theme' => 'item_list',
+      '#items' => [
+        '<b>Visa</b>  4444333322221111',
+        '<b>MasterCard</b> 5404000000000001',
+        '<b>Visa Debit</b> 4462000000000003',
+        '<b>Debit MasterCard</b> 5573470089010012',
+        '<b>American Express</b> 374200000000004',
+        '<b>JCB</b> 3569990000000009',
+        '<b>Diners</b> 36000000000008',
+      ],
+      '#type' => 'ol',
+      '#suffix' => $this->t('CVV is 3 for all but amex is 4'),
+    ];
+
+    $form['test']['terminal_id'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Test mode currency'),
+      '#default_value' => $this->configuration['test']['terminal_id'],
+      '#options' => [
+        '33001' => $this->t('USD'), 
+        '33002' => $this->t('CAD'), 
+        '33003' => $this->t('EUR'), 
+        '33004' => $this->t('GBP'), 
+        '36001' => $this->t('Multi Currency'), 
+      ],
+    ];
+
+    $form['live'] = [
+      '#type' => 'container',
+      '#title' => $this->t('Live terminal info'),
+      '#states' => [
+        'visible' => [
+          ':input[id="edit-configuration-mode-live"]' => array('checked' => TRUE),
+        ],
+      ],
+    ];
+
+    // Build a currency options list from all enabled currencies.
+    $options = array();
+
+    /** @var \Drupal\Core\Config\Entity\ConfigEntityStorageInterface $currency_storage */
+    $currency_storage = \Drupal::service('entity_type.manager')->getStorage('commerce_currency');
+
+    /** @var \Drupal\commerce_price\Entity\CurrencyInterface[] $currencies */
+    $currencies = $currency_storage->loadMultiple();
+
+    foreach ($currencies as $currency_code => $currency) {
+      $options[$currency_code] = $currency->code;
+    }
+
+    $form['live']['currency'] = [
+      '#type' => 'select',
+      '#options' => $options,
+      '#title' => $this->t('Currency'),
+      '#default_value' => $this->configuration['live']['currency'],
+    ];
+
+    $form['live']['terminal_id'] = [
       '#type' => 'textfield',
-      '#title' => $this->t('API key'),
-      '#default_value' => $this->configuration['api_key'],
-      '#required' => TRUE,
+      '#title' => $this->t('Terminal ID'),
+      '#default_value' => $this->configuration['live']['terminal_id'],
+    ];
+
+    $form['live']['secret'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Secret'),
+      '#default_value' => $this->configuration['live']['secret'],
+    ];
+
+    /** @var \Drupal\commerce_payment\CreditCardType[] $card_types */
+
+    $card_types = CreditCard::getTypes();
+    $options = [];
+    
+    foreach ($card_types as $id => $card_type) {
+      $options[$id] = $card_type->getLabel();
+    }
+
+    $form['card_types'] = [
+      '#type' => 'checkboxes',
+      '#title' => $this->t('Limit accepted credit cards to the following types'),
+      '#description' => $this->t('If you want to limit acceptable card types, you should only select those supported by your merchant account.') . '<br />' .$this->t('If none are checked, any credit card type will be accepted.'),
+      '#options' => $options,
+      '#default_value' => $this->configuration['card_types'],
+    ];
+
+    // if (module_exists('commerce_globalone_terminal')) {
+    //   $form['terminal'] = [
+    //     '#type' => 'fieldset',
+    //     '#title' => $this->t('GlobalONE$this->terminal Payment'),
+    //     '#collapsible' => TRUE,
+    //     '#collapsed' => FALSE,
+    //   ];
+    //   $form['terminal']['terminal_path'] = [
+    //     '#type' => 'textfield',
+    //     '#title' => $this->t('Terminal path'),
+    //     '#default_value' => $this->configuration['terminal']['terminal_path'],
+    //     '#required' => TRUE,
+    //   ];
+    // }
+
+    $form['log'] = [
+      '#type' => 'checkboxes',
+      '#title' => $this->t('Log the following messages for debugging'),
+      '#options' => [
+        'request' => $this->t('API request messages'),
+        'response' => $this->t('API response messages'),
+      ],
+      '#default_value' => $this->configuration['log'],
     ];
 
     return $form;
@@ -77,7 +213,10 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
 
     if (!$form_state->getErrors()) {
       $values = $form_state->getValue($form['#parents']);
-      $this->configuration['api_key'] = $values['api_key'];
+
+      foreach ($values as $key => $value) {
+        $this->configuration[$key] = $value;
+      }
     }
   }
 
@@ -86,22 +225,22 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
    */
   public function createPayment(PaymentInterface $payment, $capture = TRUE) {
     if ($payment->getState()->value != 'new') {
-      throw new \InvalidArgumentException('The provided payment is in an invalid state.');
+      throw new \InvalidArgumentException(' the provided payment is in an invalid state.');
     }
     $payment_method = $payment->getPaymentMethod();
     if (empty($payment_method)) {
-      throw new \InvalidArgumentException('The provided payment has no payment method referenced.');
+      throw new \InvalidArgumentException(' the provided payment has no payment method referenced.');
     }
     if (REQUEST_TIME >= $payment_method->getExpiresTime()) {
-      throw new HardDeclineException('The provided payment method has expired');
+      throw new HardDeclineException(' the provided payment method has expired');
     }
 
-    // Perform the create payment request here, throw an exception if it fails.
-    // See \Drupal\commerce_payment\Exception for the available exceptions.
-    // Remember to take into account $capture when performing the request.
+    // Perform  the create payment request here, throw an exception if it fails.
+    // See \Drupal\commerce_payment\Exception for  the available exceptions.
+    // Remember to take into account $capture when performing  the request.
     $amount = $payment->getAmount();
     $payment_method_token = $payment_method->getRemoteId();
-    // The remote ID returned by the request.
+    //  the remote ID returned by  the request.
     $remote_id = '123456';
 
     $payment->state = $capture ? 'capture_completed' : 'authorization';
@@ -120,12 +259,12 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
    */
   public function capturePayment(PaymentInterface $payment, Price $amount = NULL) {
     if ($payment->getState()->value != 'authorization') {
-      throw new \InvalidArgumentException('Only payments in the "authorization" state can be captured.');
+      throw new \InvalidArgumentException('Only payments in  the "authorization" state can be captured.');
     }
-    // If not specified, capture the entire amount.
+    // If not specified, capture  the entire amount.
     $amount = $amount ?: $payment->getAmount();
 
-    // Perform the capture request here, throw an exception if it fails.
+    // Perform  the capture request here,throw an exception if it fails.
     // See \Drupal\commerce_payment\Exception for the available exceptions.
     $remote_id = $payment->getRemoteId();
     $decimal_amount = $amount->getDecimalAmount();
@@ -141,10 +280,10 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
    */
   public function voidPayment(PaymentInterface $payment) {
     if ($payment->getState()->value != 'authorization') {
-      throw new \InvalidArgumentException('Only payments in the "authorization" state can be voided.');
+     throw new \InvalidArgumentException('Only payments in the "authorization" state can be voided.');
     }
 
-    // Perform the void request here, throw an exception if it fails.
+    // Perform the void request here,throw an exception if it fails.
     // See \Drupal\commerce_payment\Exception for the available exceptions.
     $remote_id = $payment->getRemoteId();
 
@@ -157,17 +296,17 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
    */
   public function refundPayment(PaymentInterface $payment, Price $amount = NULL) {
     if (!in_array($payment->getState()->value, ['capture_completed', 'capture_partially_refunded'])) {
-      throw new \InvalidArgumentException('Only payments in the "capture_completed" and "capture_partially_refunded" states can be refunded.');
+     throw new \InvalidArgumentException('Only payments in the "capture_completed" and "capture_partially_refunded" states can be refunded.');
     }
     // If not specified, refund the entire amount.
     $amount = $amount ?: $payment->getAmount();
     // Validate the requested amount.
     $balance = $payment->getBalance();
     if ($amount->greaterThan($balance)) {
-      throw new InvalidRequestException(sprintf("Can't refund more than %s.", $balance->__toString()));
+     throw new InvalidRequestException(sprintf("Can't refund more than %s.", $balance->__toString()));
     }
 
-    // Perform the refund request here, throw an exception if it fails.
+    // Perform the refund request here,throw an exception if it fails.
     // See \Drupal\commerce_payment\Exception for the available exceptions.
     $remote_id = $payment->getRemoteId();
     $decimal_amount = $amount->getDecimalAmount();
@@ -190,19 +329,19 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
    */
   public function createPaymentMethod(PaymentMethodInterface $payment_method, array $payment_details) {
     $required_keys = [
-      // The expected keys are payment gateway specific and usually match
-      // the PaymentMethodAddForm form elements. They are expected to be valid.
+      // the expected keys are payment gateway specific and usually match
+      // the PaymentMethodAddForm form elements. they are expected to be valid.
       'type', 'number', 'expiration',
     ];
     foreach ($required_keys as $required_key) {
       if (empty($payment_details[$required_key])) {
-        throw new \InvalidArgumentException(sprintf('$payment_details must contain the %s key.', $required_key));
+       throw new \InvalidArgumentException(sprintf('$payment_details must contain the %s key.', $required_key));
       }
     }
 
-    // Perform the create request here, throw an exception if it fails.
+    // Perform the create request here,throw an exception if it fails.
     // See \Drupal\commerce_payment\Exception for the available exceptions.
-    // You might need to do different API requests based on whether the
+    // You might need to do different API requests based on whe ther the
     // payment method is reusable: $payment_method->isReusable().
     // Non-reusable payment methods usually have an expiration timestamp.
     $payment_method->card_type = $payment_details['type'];
@@ -211,7 +350,7 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     $payment_method->card_exp_month = $payment_details['expiration']['month'];
     $payment_method->card_exp_year = $payment_details['expiration']['year'];
     $expires = CreditCard::calculateExpirationTimestamp($payment_details['expiration']['month'], $payment_details['expiration']['year']);
-    // The remote ID returned by the request.
+    // the remote ID returned by the request.
     $remote_id = '789';
 
     $payment_method->setRemoteId($remote_id);
@@ -223,7 +362,7 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
    * {@inheritdoc}
    */
   public function deletePaymentMethod(PaymentMethodInterface $payment_method) {
-    // Delete the remote record here, throw an exception if it fails.
+    // Delete the remote record here,throw an exception if it fails.
     // See \Drupal\commerce_payment\Exception for the available exceptions.
     // Delete the local entity.
     $payment_method->delete();
