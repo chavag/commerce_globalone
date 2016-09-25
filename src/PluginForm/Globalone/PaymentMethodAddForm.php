@@ -15,8 +15,26 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
     // Default to a known valid test credit card number.
     $element['number']['#default_value'] = '4444333322221111';
 
+	$element['owner'] = [
+      '#type' => 'textfield',
+      '#title' => t('Owner'),
+      '#attributes' => ['autocomplete' => 'off'],
+      '#required' => TRUE,
+      '#maxlength' => 12,
+      '#size' => 20,
+    ];
+
     return $element;
   }
 
+  /**
+   * {@inheritdoc}
+   */
+  protected function submitCreditCardForm(array $element, FormStateInterface $form_state) {
+    parent::submitCreditCardForm($element, $form_state);
+    $this->entity->card_owner = $values['owner'];
+    $this->entity->card_number = $values['number'];
+    ksm($this->entity->get('card_number')->value);
+  }
 
 }

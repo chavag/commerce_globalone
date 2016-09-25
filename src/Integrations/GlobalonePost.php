@@ -1,8 +1,8 @@
 <?php
 
-namespace Drupal\commerce_globalone\Integrations\GlobalonePost;
+namespace Drupal\commerce_globalone\Integrations;
 
-use Drupal\commerce_globalone\Integrations\GlobaloneFormat;
+use Drupal\Component\Utility\Html;
 
 class GlobalonePost {
 
@@ -31,24 +31,24 @@ class GlobalonePost {
     $this->_normalizedPaymentParams = $format->getNormalizedPaymentParams();
     $XML = $format->getXML();
     if ($this->_logRequest) {
-      watchdog('commerce_globalone', 'GlobalONE request to @url: !param', array('@url' => $this->_terminal['url'], '!param' => '<pre>' . check_plain(print_r($XML, TRUE)) . '</pre>'), WATCHDOG_DEBUG);
+      \Drupal::logger('commerce_globalone')->debug('GlobalONE request to @url: !param', array('@url' => $this->_terminal['url'], '!param' => '<pre>' . Html::escape(print_r($XML, TRUE)) . '</pre>'));
     } 
 
     $this->_xml = $XML;
 
-    $resp = $this->curlXmlRequest();
+    $resp = $this->curlXmlRequest($format);
     
     if ($this->_logResponse) {
-      watchdog('commerce_globalone', 'GlobalONE response: !param', array('!param' => '<pre>' . check_plain(print_r($resp, TRUE)) . '</pre>'), WATCHDOG_DEBUG);
+      \Drupal::logger('commerce_globalone')->debug('GlobalONE response: !param', array('!param' => '<pre>' . Html::escape(print_r($resp, TRUE)) . '</pre>'));  
     }
     $resp['STATUS'] = $this->controlResponseHash($resp);
     return $resp;
 
   }
 
-  public function curlXmlRequest() {
+  public function curlXmlRequest(GlobaloneFormat $format) {
     $xml = $this->_xml;
-    $ch = curl_init($this->_terminal['url');
+    $ch = curl_init($this->_terminal['url']);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
     curl_setopt($ch, CURLOPT_POST, 1);
@@ -57,13 +57,13 @@ class GlobalonePost {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     $result = curl_exec($ch);
 
-    // Log any errors to the watchdog.
+    // Log any errors to the Drupal logger.
     if ($error = curl_error($ch)) {
-      watchdog('commerce_globalone', 'cURL error: @error', array('@error' => $error), WATCHDOG_ERROR);
+      \Drupal::logger('commerce_globalone')->error('cURL error: @error', array('@error' => $error));  
       return FALSE;
     }
     curl_close($ch);
-    return $this->XMLToArray($result);
+    return $format->XMLToArray($result);
   }
 
   public function logRequest() {

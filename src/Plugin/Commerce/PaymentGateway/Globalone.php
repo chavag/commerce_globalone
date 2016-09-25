@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_globalone\Plugin\Commerce\PaymentGateway;
 
+use Drupal\commerce_globalone\Integrations\GlobalonePost;
 use Drupal\commerce_payment\CreditCard;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
@@ -13,6 +14,10 @@ use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\PaymentGatewayBase;
 use Drupal\commerce_price\Price;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Component\Utility\Html;
+
+define('GLOBALONE_TEST_URL', 'https://testpayments.globalone.me/merchant/xmlpayment');
+define('GLOBALONE_LIVE_URL', 'https://payments.globalone.me/merchant/xmlpayment');
 
 /**
  * Provides the Onsite payment gateway.
@@ -30,6 +35,7 @@ use Drupal\Core\Form\FormStateInterface;
  *   },
  * )
  */
+
 class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
 
   /**
@@ -138,7 +144,7 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     $currencies = $currency_storage->loadMultiple();
 
     foreach ($currencies as $currency_code => $currency) {
-      $options[$currency_code] = $currency->code;
+      $options[$currency_code] = $currency_code;
     }
 
     $form['live']['currency'] = [
@@ -180,7 +186,7 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     // if (module_exists('commerce_globalone_terminal')) {
     //   $form['terminal'] = [
     //     '#type' => 'fieldset',
-    //     '#title' => $this->t('GlobalONE$this->terminal Payment'),
+    //     '#title' => $this->t('GlobalONE terminal Payment'),
     //     '#collapsible' => TRUE,
     //     '#collapsed' => FALSE,
     //   ];
@@ -215,7 +221,7 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
       $values = $form_state->getValue($form['#parents']);
 
       foreach ($values as $key => $value) {
-        $this->configuration[$key] = $value;
+        $this->configuration[$key] = $value;  
       }
     }
   }
@@ -224,10 +230,12 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
    * {@inheritdoc}
    */
   public function createPayment(PaymentInterface $payment, $capture = TRUE) {
+
     if ($payment->getState()->value != 'new') {
       throw new \InvalidArgumentException(' the provided payment is in an invalid state.');
     }
     $payment_method = $payment->getPaymentMethod();
+
     if (empty($payment_method)) {
       throw new \InvalidArgumentException(' the provided payment has no payment method referenced.');
     }
@@ -235,15 +243,52 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
       throw new HardDeclineException(' the provided payment method has expired');
     }
 
-    // Perform  the create payment request here, throw an exception if it fails.
-    // See \Drupal\commerce_payment\Exception for  the available exceptions.
-    // Remember to take into account $capture when performing  the request.
-    $amount = $payment->getAmount();
+    $params = [];
+    $params['ORDERID'] = $payment->getOrderId();
+    $params['AMOUNT'] = $payment->getAmount()->getDecimalAmount();
+    $params['CURRENCY'] = $payment->getAmount()->getCurrencyCode();
+    $params['CARDNUMBER'] = $payment_method->get('card_number')->value;
+
+    //@TODO: add CARDHOLDERNAME param
+    $params['CARDHOLDERNAME'] = '209897787';
+
+    $params['MONTH'] = $payment_method->values['card_exp_month']['x-default']['value'];
+    $params['YEAR'] = $payment_method->values['card_exp_year']['x-default']['value'];
+    
+    //@TODO: add cvv param
+    $params['CVV'] = '123';
+
+    $params['CARDTYPE'] = $payment_method->values['card_type']['x-default']['value'];
+    $params['DESCRIPTION'] = $this->t('GlobalOne payment from drupal commerce 2');
+
+    ksm($params);
+    
+    $settings = $this->getConfiguration();
+
+    $terminal = $settings['mode'] == 'live' ?  $this->getLiveTerminalInfo($settings['live']) :
+     $this->getTestTerminalInfo($settings['test']['terminal_id']);
+
+    $globalone_post = new GlobalonePost($terminal, $params);
+    if ($settings['log']['response']) {
+      $globalone_post->logResponse();
+    }
+    if ($settings['log']['request']) {
+      $globalone_post->logRequest();
+    }
+
+    $response = $globalone_post->sendPayment(); 
+
+    // Check if all good.
+    if (!$response['STATUS']) {
+      $message = !empty($response['ERRORSTRING']) ? Html::escape($response['ERRORSTRING']) :  t('something went completlly wrong.');
+      drupal_set_message($message);
+    } 
+
     $payment_method_token = $payment_method->getRemoteId();
     //  the remote ID returned by  the request.
     $remote_id = '123456';
 
-    $payment->state = $capture ? 'capture_completed' : 'authorization';
+    //$payment->state = $capture ? 'capture_completed' : 'authorization';
     $test = $this->getMode() == 'test';
     $payment->setTest($test);
     $payment->setRemoteId($remote_id);
@@ -252,7 +297,82 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
       $payment->setCapturedTime(REQUEST_TIME);
     }
     $payment->save();
+
   }
+
+  /**
+ * Return live terminals.
+ *
+ * @param $live_terminal
+ *  The terminal id to map details for.
+ *
+ * @return
+ *  Array with 'url', currency
+ *
+ *
+ */
+  public function getLiveTerminalInfo($live_terminal) {
+  $terminal = array(
+    'url' => GLOBALONE_LIVE_URL,
+    'currency' => $live_terminal['currency'],
+    'terminal_id' => $live_terminal['terminal_id'],
+    'secret' => $live_terminal['secret'],
+    'mode' => 'live',
+  );
+  return $terminal;
+}
+
+/**
+ * Return test terminals.
+ *
+ * @param $terminal_id
+ *  The terminal id to get details for.
+ *
+ * @return
+ *  Array with 'url', currency
+ *
+ *
+ */
+public function getTestTerminalInfo($terminal_id) {
+  $test_terminals = array(
+    '33001' => array(
+      'url' => GLOBALONE_TEST_URL,
+      'terminal_id' => '33001',
+      'currency' => 'USD',
+      'secret' => 'SandboxSecret001',
+      'mode' => 'test',
+    ),
+    '33002' => array(
+      'url' => GLOBALONE_TEST_URL,
+      'terminal_id' => '33002',
+      'currency' => 'CAD',
+      'secret' => 'SandboxSecret002',
+      'mode' => 'test',
+    ),
+    '33003' => array(
+      'url' => GLOBALONE_TEST_URL,
+      'terminal_id' => '33003',
+      'currency' => 'EUR',
+      'secret' => 'SandboxSecret003',
+      'mode' => 'test',
+    ),
+    '33004' => array(
+      'url' => GLOBALONE_TEST_URL,
+      'terminal_id' => '33004',
+      'currency' => 'GBP',
+      'secret' => 'SandboxSecret004',
+      'mode' => 'test',
+    ),
+    '36001' => array(
+      'url' => GLOBALONE_TEST_URL,
+      'terminal_id' => '36001',
+      'currency' => 'MCP',
+      'secret' => 'SandboxSecret001',
+      'mode' => 'test',
+    ),
+  );
+  return $test_terminals[$terminal_id];
+}
 
   /**
    * {@inheritdoc}

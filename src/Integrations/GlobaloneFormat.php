@@ -1,8 +1,8 @@
 <?php
 
-namespace Drupal\commerce_globalone\Integrations\GlobaloneFormat;
+namespace Drupal\commerce_globalone\Integrations;
 
-class GlobaloneFormat{
+class GlobaloneFormat {
   protected $_paymentParams;
   protected $_paymentResponse;
   protected $_normalizedPaymentReponse;
