@@ -251,20 +251,22 @@ class GlobaloneFormat {
     foreach($params as $key=>$param):
       $tag = strtoupper($key);
     $out .= '<'.$tag.'>'.$param.'</'.$tag.'>';
-endforeach;
-$out .= '</'.$xmlStructure['XMLEnclosureTag'].'>';
-$this->_xml = $out;
-return $out;
+    endforeach;
+    $out .= '</'.$xmlStructure['XMLEnclosureTag'].'>';
+    $this->_xml = $out;
+    return $out;
   }
 
-  private function cleanExpiryDate($month = '',$year = ''){
+  private function cleanExpiryDate($month = '',$year = '') {
     if(strlen($year)>2):
       $year = substr($year, 2,2);
-endif;
+    endif;
+    if (strlen($month) == 1):
+      $month = '0' . $month;
+    endif;
+    $date = $month.$year;
 
-$date = $month.$year;
-
-return $date;
+    return $date;
   }
 
   private function cleanCardNumber($cardNumber = ''){

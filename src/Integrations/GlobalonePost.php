@@ -30,6 +30,7 @@ class GlobalonePost {
     $format = new GlobaloneFormat($this->_paymentParams,$this->_terminal,$this->createHash(),$this->_postDateTime);
     $this->_normalizedPaymentParams = $format->getNormalizedPaymentParams();
     $XML = $format->getXML();
+
     if ($this->_logRequest) {
       \Drupal::logger('commerce_globalone')->debug('GlobalONE request to @url: !param', array('@url' => $this->_terminal['url'], '!param' => '<pre>' . Html::escape(print_r($XML, TRUE)) . '</pre>'));
     } 
@@ -85,11 +86,11 @@ class GlobalonePost {
     $stringToHash = '';
     $stringToHash .= $this->_terminal['terminal_id'];
     $stringToHash .= $params['ORDERID'];
-    $stringToHash .= $params['AMOUNT'];
     // If multi-currency we should add currency to hash.
     if ($this->_terminal['currency'] == 'MCP') {
       $stringToHash .= $params['CURRENCY'];
     }
+    $stringToHash .= $params['AMOUNT'];
     $stringToHash .= $this->_postDateTime;
     $stringToHash .= $this->_terminal['secret'];
     $this->_postHash = md5($stringToHash);

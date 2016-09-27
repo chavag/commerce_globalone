@@ -29,7 +29,7 @@ define('GLOBALONE_LIVE_URL', 'https://payments.globalone.me/merchant/xmlpayment'
  *    forms = {
  *     "add-payment-method" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentMethodAddForm",
  *   },
- *   payment_method_types = {"credit_card"},
+ *   payment_method_types = {"extend_credit_card"},
  *   credit_card_types = {
  *     "amex", "dinersclub", "discover", "jcb", "maestro", "mastercard", "visa",
  *   },
@@ -234,6 +234,7 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     if ($payment->getState()->value != 'new') {
       throw new \InvalidArgumentException(' the provided payment is in an invalid state.');
     }
+
     $payment_method = $payment->getPaymentMethod();
 
     if (empty($payment_method)) {
@@ -247,25 +248,23 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     $params['ORDERID'] = $payment->getOrderId();
     $params['AMOUNT'] = $payment->getAmount()->getDecimalAmount();
     $params['CURRENCY'] = $payment->getAmount()->getCurrencyCode();
-    $params['CARDNUMBER'] = $payment_method->get('card_number')->value;
+    $params['CARDNUMBER'] = $payment_method->card_number->value;
 
     //@TODO: add CARDHOLDERNAME param
-    $params['CARDHOLDERNAME'] = '209897787';
+    $params['CARDHOLDERNAME'] = $payment_method->card_owner->value;
 
-    $params['MONTH'] = $payment_method->values['card_exp_month']['x-default']['value'];
-    $params['YEAR'] = $payment_method->values['card_exp_year']['x-default']['value'];
+    $params['MONTH'] = $payment_method->card_exp_month->value;
+    $params['YEAR'] = $payment_method->card_exp_year->value;
     
     //@TODO: add cvv param
-    $params['CVV'] = '123';
+    $params['CVV'] = $payment_method->card_cvv->value;
 
-    $params['CARDTYPE'] = $payment_method->values['card_type']['x-default']['value'];
+    $params['CARDTYPE'] = $payment_method->card_type->value;
     $params['DESCRIPTION'] = $this->t('GlobalOne payment from drupal commerce 2');
 
-    ksm($params);
-    
     $settings = $this->getConfiguration();
 
-    $terminal = $settings['mode'] == 'live' ?  $this->getLiveTerminalInfo($settings['live']) :
+    $terminal = $this->getMode() == 'live' ?  $this->getLiveTerminalInfo($settings['live']) :
      $this->getTestTerminalInfo($settings['test']['terminal_id']);
 
     $globalone_post = new GlobalonePost($terminal, $params);
@@ -282,16 +281,13 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     if (!$response['STATUS']) {
       $message = !empty($response['ERRORSTRING']) ? Html::escape($response['ERRORSTRING']) :  t('something went completlly wrong.');
       drupal_set_message($message);
+    } else {
+      $payment->state = $capture ? 'capture_completed' : 'authorization';
     } 
 
-    $payment_method_token = $payment_method->getRemoteId();
-    //  the remote ID returned by  the request.
-    $remote_id = '123456';
-
-    //$payment->state = $capture ? 'capture_completed' : 'authorization';
     $test = $this->getMode() == 'test';
     $payment->setTest($test);
-    $payment->setRemoteId($remote_id);
+
     $payment->setAuthorizedTime(REQUEST_TIME);
     if ($capture) {
       $payment->setCapturedTime(REQUEST_TIME);
@@ -453,6 +449,7 @@ public function getTestTerminalInfo($terminal_id) {
       // the PaymentMethodAddForm form elements. they are expected to be valid.
       'type', 'number', 'expiration',
     ];
+
     foreach ($required_keys as $required_key) {
       if (empty($payment_details[$required_key])) {
        throw new \InvalidArgumentException(sprintf('$payment_details must contain the %s key.', $required_key));
@@ -466,7 +463,9 @@ public function getTestTerminalInfo($terminal_id) {
     // Non-reusable payment methods usually have an expiration timestamp.
     $payment_method->card_type = $payment_details['type'];
     // Only the last 4 numbers are safe to store.
-    $payment_method->card_number = substr($payment_details['number'], -4);
+    $payment_method->card_number = $payment_details['number'];
+    $payment_method->card_owner = $payment_details['owner'];
+    $payment_method->card_cvv = $payment_details['security_code'];
     $payment_method->card_exp_month = $payment_details['expiration']['month'];
     $payment_method->card_exp_year = $payment_details['expiration']['year'];
     $expires = CreditCard::calculateExpirationTimestamp($payment_details['expiration']['month'], $payment_details['expiration']['year']);
