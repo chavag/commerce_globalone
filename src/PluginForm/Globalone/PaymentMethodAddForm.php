@@ -48,6 +48,7 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
       '#type' => 'container',
       '#payment_method_type' => $payment_method->bundle(),
     ];
+
     if ($payment_method->bundle() == 'credit_card') {
       $form['payment_details'] = $this->buildCreditCardForm($form['payment_details'], $form_state);
     }

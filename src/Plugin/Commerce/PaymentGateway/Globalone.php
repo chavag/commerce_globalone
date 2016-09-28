@@ -27,7 +27,11 @@ use Drupal\Component\Utility\Html;
  *     "add-payment-method" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentMethodAddForm",
  *     "capture-payment" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentCaptureForm"
  *   },
+<<<<<<< HEAD
  *   payment_method_types = {"credit_card"},
+=======
+ *   payment_method_types = {"globalone_credit_card"},
+>>>>>>> 8cfff8215a4f046bbc2cedeb1a3614a9cddf5b5c
  *   credit_card_types = {
  *     "amex", "dinersclub", "discover", "jcb", "maestro", "mastercard", "visa",
  *   },
@@ -316,11 +320,10 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
         drupal_set_message(t('The payment failed with the response: @response.', array(
           '@response' => $response['RESPONSETEXT'],
         )));
-      return false;
+      return FALSE;
       break;
 
     }
-
  }
 
   /**
