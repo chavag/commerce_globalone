@@ -48,7 +48,7 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
       '#type' => 'container',
       '#payment_method_type' => $payment_method->bundle(),
     ];
-    if ($payment_method->bundle() == 'credit_card' || $payment_method->bundle() == 'extend_credit_card') {
+    if ($payment_method->bundle() == 'credit_card') {
       $form['payment_details'] = $this->buildCreditCardForm($form['payment_details'], $form_state);
     }
 
@@ -65,24 +65,11 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
     return $form; 
   }
 
-   /**
-   * {@inheritdoc}
-   */
-  public function validateConfigurationForm(array &$form, FormStateInterface $form_state) {
-    parent::validateConfigurationForm($form, $form_state);
-    /** @var \Drupal\commerce_payment\Entity\PaymentMethodInterface $payment_method */
-    $payment_method = $this->entity;
-
-    if ($payment_method->bundle() == 'extend_credit_card') {
-      parent::validateCreditCardForm($form['payment_details'], $form_state);
-    }
-  }
-
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
     /** @var \Drupal\commerce_payment\Entity\PaymentMethodInterface $payment_method */
     $payment_method = $this->entity;
 
-    if ($payment_method->bundle() == 'credit_card' || $payment_method->bundle() == 'extend_credit_card') {
+    if ($payment_method->bundle() == 'credit_card') {
       $this->submitCreditCardForm($form['payment_details'], $form_state);
     }
     elseif ($payment_method->bundle() == 'paypal') {

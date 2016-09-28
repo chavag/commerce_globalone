@@ -5,3 +5,6 @@ package: Commerce
 core: 8.x
 dependencies:
   - commerce_payment
+config_devel:
+  install:
+  - commerce_globalone.settings
