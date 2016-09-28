@@ -20,6 +20,7 @@ function commerce_globalone_entity_base_field_info(\Drupal\Core\Entity\EntityTyp
       ->setDescription(t('The credit card Cvv number'))
       ->setRequired(TRUE); 
 
-  	return $fields;
-  }
+  
+  }	return $fields;
+}
 
