@@ -1,6 +1,5 @@
 <?php
 
-<<<<<<< HEAD
 use Drupal\commerce\BundleFieldDefinition;
 
 /*
@@ -23,11 +22,4 @@ function commerce_globalone_entity_base_field_info(\Drupal\Core\Entity\EntityTyp
 
   	return $fields;
   }
-=======
-/*
-* Implements hook_form_alter
-*/
-function commerce_globalone_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
 
->>>>>>> 8cfff8215a4f046bbc2cedeb1a3614a9cddf5b5c
-}
