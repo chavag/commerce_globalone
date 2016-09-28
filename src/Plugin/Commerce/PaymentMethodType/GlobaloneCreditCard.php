@@ -11,12 +11,12 @@ use Drupal\commerce_payment\Entity\PaymentMethodInterface;
  * Provides the credit card payment method type.
  *
  * @CommercePaymentMethodType(
- *   id = "extend_credit_card",
- *   label = @Translation("Extended Credit card"),
- *   create_label = @Translation("New Extended credit card"),
+ *   id = "globalone_credit_card",
+ *   label = @Translation("Globalone Credit card"),
+ *   create_label = @Translation("New Globalone credit card"),
  * )
  */
-class ExtendCreditCard extends CreditCardBase {
+class GlobaloneCreditCard extends CreditCardBase {
 
   /**
    * {@inheritdoc}

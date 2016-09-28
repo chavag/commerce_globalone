@@ -16,9 +16,6 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Utility\Html;
 
-define('GLOBALONE_TEST_URL', 'https://testpayments.globalone.me/merchant/xmlpayment');
-define('GLOBALONE_LIVE_URL', 'https://payments.globalone.me/merchant/xmlpayment');
-
 /**
  * Provides the Onsite payment gateway.
  *
@@ -28,8 +25,9 @@ define('GLOBALONE_LIVE_URL', 'https://payments.globalone.me/merchant/xmlpayment'
  *   display_label = "Globalone",
  *    forms = {
  *     "add-payment-method" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentMethodAddForm",
+ *     "capture-payment" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentCaptureForm"
  *   },
- *   payment_method_types = {"extend_credit_card"},
+ *   payment_method_types = {"globalone_credit_card"},
  *   credit_card_types = {
  *     "amex", "dinersclub", "discover", "jcb", "maestro", "mastercard", "visa",
  *   },
@@ -244,6 +242,22 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
       throw new HardDeclineException(' the provided payment method has expired');
     }
 
+    $test = $this->getMode() == 'test';
+    $payment->setTest($test);
+    $payment->state = 'authorization';
+
+    if ($capture) {
+      return $this->capturePayment($payment);
+    } 
+
+    $payment->setAuthorizedTime(REQUEST_TIME);
+    $payment->save();
+  }
+
+  public function globalonePostPayment(PaymentInterface $payment) {
+    
+    $payment_method = $payment->getPaymentMethod();
+
     $params = [];
     $params['ORDERID'] = $payment->getOrderId();
     $params['AMOUNT'] = $payment->getAmount()->getDecimalAmount();
@@ -276,25 +290,13 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     }
 
     $response = $globalone_post->sendPayment(); 
-
-    // Check if all good.
     if (!$response['STATUS']) {
       $message = !empty($response['ERRORSTRING']) ? Html::escape($response['ERRORSTRING']) :  t('something went completlly wrong.');
       drupal_set_message($message);
-    } else {
-      $payment->state = $capture ? 'capture_completed' : 'authorization';
+      return FALSE;
     } 
-
-    $test = $this->getMode() == 'test';
-    $payment->setTest($test);
-
-    $payment->setAuthorizedTime(REQUEST_TIME);
-    if ($capture) {
-      $payment->setCapturedTime(REQUEST_TIME);
-    }
-    $payment->save();
-
-  }
+    return TRUE;
+ }
 
   /**
  * Return live terminals.
@@ -308,15 +310,15 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
  *
  */
   public function getLiveTerminalInfo($live_terminal) {
-  $terminal = array(
-    'url' => GLOBALONE_LIVE_URL,
-    'currency' => $live_terminal['currency'],
-    'terminal_id' => $live_terminal['terminal_id'],
-    'secret' => $live_terminal['secret'],
-    'mode' => 'live',
-  );
-  return $terminal;
-}
+    $terminal = array(
+      'url' => \Drupal::config('commerce_globalone.settings')->get('globalone_live_url'),
+      'currency' => $live_terminal['currency'],
+      'terminal_id' => $live_terminal['terminal_id'],
+      'secret' => $live_terminal['secret'],
+      'mode' => 'live',
+    );
+    return $terminal;
+  }
 
 /**
  * Return test terminals.
@@ -329,66 +331,67 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
  *
  *
  */
-public function getTestTerminalInfo($terminal_id) {
-  $test_terminals = array(
-    '33001' => array(
-      'url' => GLOBALONE_TEST_URL,
-      'terminal_id' => '33001',
-      'currency' => 'USD',
-      'secret' => 'SandboxSecret001',
-      'mode' => 'test',
-    ),
-    '33002' => array(
-      'url' => GLOBALONE_TEST_URL,
-      'terminal_id' => '33002',
-      'currency' => 'CAD',
-      'secret' => 'SandboxSecret002',
-      'mode' => 'test',
-    ),
-    '33003' => array(
-      'url' => GLOBALONE_TEST_URL,
-      'terminal_id' => '33003',
-      'currency' => 'EUR',
-      'secret' => 'SandboxSecret003',
-      'mode' => 'test',
-    ),
-    '33004' => array(
-      'url' => GLOBALONE_TEST_URL,
-      'terminal_id' => '33004',
-      'currency' => 'GBP',
-      'secret' => 'SandboxSecret004',
-      'mode' => 'test',
-    ),
-    '36001' => array(
-      'url' => GLOBALONE_TEST_URL,
-      'terminal_id' => '36001',
-      'currency' => 'MCP',
-      'secret' => 'SandboxSecret001',
-      'mode' => 'test',
-    ),
-  );
-  return $test_terminals[$terminal_id];
-}
+  public function getTestTerminalInfo($terminal_id) {
+    $test_url = \Drupal::config('commerce_globalone.settings')->get('globalone_test_url');
+
+    $test_terminals = array(
+      '33001' => array(
+        'url' => $test_url,
+        'terminal_id' => '33001',
+        'currency' => 'USD',
+        'secret' => 'SandboxSecret001',
+        'mode' => 'test',
+      ),
+      '33002' => array(
+        'url' => $test_url,
+        'terminal_id' => '33002',
+        'currency' => 'CAD',
+        'secret' => 'SandboxSecret002',
+        'mode' => 'test',
+      ),
+      '33003' => array(
+        'url' => $test_url,
+        'terminal_id' => '33003',
+        'currency' => 'EUR',
+        'secret' => 'SandboxSecret003',
+        'mode' => 'test',
+      ),
+      '33004' => array(
+        'url' => $test_url,
+        'terminal_id' => '33004',
+        'currency' => 'GBP',
+        'secret' => 'SandboxSecret004',
+        'mode' => 'test',
+      ),
+      '36001' => array(
+        'url' => $test_url,
+        'terminal_id' => '36001',
+        'currency' => 'MCP',
+        'secret' => 'SandboxSecret001',
+        'mode' => 'test',
+      ),
+    );
+    return $test_terminals[$terminal_id];
+  }
 
   /**
    * {@inheritdoc}
    */
   public function capturePayment(PaymentInterface $payment, Price $amount = NULL) {
+
     if ($payment->getState()->value != 'authorization') {
       throw new \InvalidArgumentException('Only payments in  the "authorization" state can be captured.');
     }
-    // If not specified, capture  the entire amount.
-    $amount = $amount ?: $payment->getAmount();
 
-    // Perform  the capture request here,throw an exception if it fails.
-    // See \Drupal\commerce_payment\Exception for the available exceptions.
-    $remote_id = $payment->getRemoteId();
-    $decimal_amount = $amount->getDecimalAmount();
+    if ($this->globalonePostPayment($payment)) {
+      $payment->setCapturedTime(REQUEST_TIME);
+      $payment->state = 'capture_completed';
+      $payment->save();
+      return TRUE;
+    } 
 
-    $payment->state = 'capture_completed';
-    $payment->setAmount($amount);
-    $payment->setCapturedTime(REQUEST_TIME);
-    $payment->save();
+    $this->voidPayment($payment);
+    return FALSE;
   }
 
   /**
@@ -398,10 +401,6 @@ public function getTestTerminalInfo($terminal_id) {
     if ($payment->getState()->value != 'authorization') {
      throw new \InvalidArgumentException('Only payments in the "authorization" state can be voided.');
     }
-
-    // Perform the void request here,throw an exception if it fails.
-    // See \Drupal\commerce_payment\Exception for the available exceptions.
-    $remote_id = $payment->getRemoteId();
 
     $payment->state = 'authorization_voided';
     $payment->save();
