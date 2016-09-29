@@ -14,11 +14,14 @@ class PaymentCaptureForm extends BasePaymentCaptureForm {
     $payment = $this->entity;
     /** @var \Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsAuthorizationsInterface $payment_gateway_plugin */
     $payment_gateway_plugin = $this->plugin;
-    $success = $payment_gateway_plugin->capturePayment($payment, $form['amount']['#value']);
-    if ($success) {
+    $payment_gateway_plugin->capturePayment($payment, $form['amount']['#value']);
+
+    $messages = drupal_get_messages('error');
+    if (!isset($messages['error'])) {
       $form['#success_message'] = t('Payment captured.');
     } else {
-      $form['#success_message'] = t('Payment captured Failed.');
+      unset($form['#success_message']);
+      drupal_set_message(t('Payment capture failed with this message: ') . implode($messages['error'], ',  '), 'error');
     }
   }
 
