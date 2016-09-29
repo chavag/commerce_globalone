@@ -27,11 +27,7 @@ use Drupal\Component\Utility\Html;
  *     "add-payment-method" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentMethodAddForm",
  *     "capture-payment" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentCaptureForm"
  *   },
-<<<<<<< HEAD
  *   payment_method_types = {"credit_card"},
-=======
- *   payment_method_types = {"globalone_credit_card"},
->>>>>>> 8cfff8215a4f046bbc2cedeb1a3614a9cddf5b5c
  *   credit_card_types = {
  *     "amex", "dinersclub", "discover", "jcb", "maestro", "mastercard", "visa",
  *   },
@@ -265,7 +261,7 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     $params = [];
     $params['ORDERID'] = $payment->getOrderId();
 
-    $params['AMOUNT'] = $payment->getAmount()->getDecimalAmount();
+    $params['AMOUNT'] = number_format($payment->getAmount()->getDecimalAmount(), 2);
     $params['CURRENCY'] = $payment->getAmount()->getCurrencyCode();
     $params['CARDNUMBER'] = $payment_method->card_number->value;
 
@@ -295,9 +291,10 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     }
 
     $response = $globalone_post->sendPayment(); 
-    if (!$response['STATUS'] || !isset($response['RESPONSECODE'])) {
+    if (!isset($response['RESPONSECODE'])) {
       $message = !empty($response['ERRORSTRING']) ? Html::escape($response['ERRORSTRING']) :  t('something went completlly wrong.');
-      drupal_set_message($message);
+      $message = t('Globalone : ') . $message;
+      drupal_set_message($message, 'error');
       return FALSE;
     } 
 
@@ -307,19 +304,20 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     switch ($response['RESPONSECODE']) {
       // Approved.
       case 'A':
+        drupal_set_message(t('Globalone : The payment approved.'));
         return $payment;
        break; 
         // Referred.
       case 'R':
-        drupal_set_message(t('The payment gateway referred authorisation.'));
+        drupal_set_message(t('Globalone : The payment gateway referred authorisation.'), 'error');
         return FALSE;
       break;  
         // Declined or unknown.
       case 'D':
       default:
-        drupal_set_message(t('The payment failed with the response: @response.', array(
+        drupal_set_message(t('Globalone : The payment failed with the response: @response.', array(
           '@response' => $response['RESPONSETEXT'],
-        )));
+        )), 'error');
       return FALSE;
       break;
 
@@ -416,11 +414,10 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
       $payment->setCapturedTime(REQUEST_TIME);
       $payment->state = 'capture_completed';
       $payment->save();
-      return TRUE;
+    } else {
+      $this->voidPayment($payment);
     } 
 
-    $this->voidPayment($payment);
-    return FALSE;
   }
 
   /**
@@ -513,6 +510,14 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     // See \Drupal\commerce_payment\Exception for the available exceptions.
     // Delete the local entity.
     $payment_method->delete();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getPaymentMethodTypes() {
+    // Filter out payment method types disabled by the merchant.
+    return array_intersect_key($this->paymentMethodTypes, $this->configuration['payment_method_types']);
   }
 
 }
