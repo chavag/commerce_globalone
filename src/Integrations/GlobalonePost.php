@@ -6,29 +6,29 @@ use Drupal\Component\Utility\Html;
 
 class GlobalonePost {
 
-  public $_paymentURL;
-  public $_paymentParams;
+  public $_URL;
+  public $_params;
   public $_xml;
   public $_terminal;
   public $_postHash;
   public $_postDateTime;
-  public $_normalizedPaymentParams;
-  public $_normalizedPaymentReponse;
+  public $_normalizedParams;
+  public $_normalizedReponse;
   public $mode;
   public $_logRequest = FALSE;
   public $_logResponse = FALSE;
 
-  public function __construct($terminal,$paymentParams) {
+  public function __construct($terminal,$params) {
     $this->_terminal = $terminal;
     $this->mode = $terminal['mode'];
-    $this->_paymentParams = $paymentParams;
+    $this->_params = $params;
     $this->_postDateTime = date('d-m-Y:H:i:s').':000';
   }
 
-  public function sendPayment() {
+  public function sendRequest() {
     
-    $format = new GlobaloneFormat($this->_paymentParams,$this->_terminal,$this->createHash(),$this->_postDateTime);
-    $this->_normalizedPaymentParams = $format->getNormalizedPaymentParams();
+    $format = new GlobaloneFormat($this->_params,$this->_terminal,$this->createHash(),$this->_postDateTime);
+    $this->_normalizedParams = $format->getNormalizedParams();
     $XML = $format->getXML();
 
     if ($this->_logRequest) {
@@ -81,54 +81,83 @@ class GlobalonePost {
 
   public function createHash() {
 
-    $params = $this->_paymentParams;
+    $params = $this->_params;
 
-    $stringToHash = '';
-    $stringToHash .= $this->_terminal['terminal_id'];
-    $stringToHash .= $params['ORDERID'];
-    // If multi-currency we should add currency to hash.
-    if ($this->_terminal['currency'] == 'MCP') {
-      $stringToHash .= $params['CURRENCY'];
+    switch ($params['XMLEnclosureTag']) {
+      case 'PAYMENT':
+        $hash = array($this->_terminal['terminal_id'], $params['ORDERID']);
+        // If multi-currency we should add currency to hash.
+        if ($this->_terminal['currency'] == 'MCP') {
+          $hash[] = $params['CURRENCY'];
+        }
+        $hash += array($params['AMOUNT'], $this->_postDateTime, $this->_terminal['secret']);
+      break;
+      case 'SECURECARDREGISTRATION':
+      case 'SECURECARDUPDATE':
+        // set all keys on parameters array, to avoid php errors 
+        $fields = array('CARDNUMBER', 'CARDEXPIRY', 'CARDTYPE', 'CARDHOLDERNAME');
+        foreach ($fields as $key) {
+          if (!isset($params[$key])) {
+            $params[$key] = '';
+          }
+        }
+
+        $hash = array($this->_terminal['terminal_id'], $params['MERCHANTREF'], $this->_postDateTime,
+          $params['CARDNUMBER'], $params['CARDEXPIRY'], $params['CARDTYPE'], 
+          $params['CARDHOLDERNAME'], $this->_terminal['secret']);
+      break;
+      case 'SECURECARDREMOVAL':
+        $hash = array($this->_terminal['terminal_id'], $params['MERCHANTREF'],
+          $this->_postDateTime, $params['CARDREFERENCE'], $this->_terminal['secret']);
+      break;
     }
-    $stringToHash .= $params['AMOUNT'];
-    $stringToHash .= $this->_postDateTime;
-    $stringToHash .= $this->_terminal['secret'];
+
+    $stringToHash = implode('', $hash); 
     $this->_postHash = md5($stringToHash);
     return md5($stringToHash);
   }
 
-
   public function buildResponseHash() {
-    $reponse = $this->_normalizedPaymentReponse;
-    $payment = $this->_paymentParams;
-    $stringToHash = '';
-    $stringToHash .= $this->_terminal['terminal_id'];
-    $stringToHash .= $reponse['UNIQUEREF'];
-    $stringToHash .= $payment['AMOUNT'];
-    $stringToHash .= $reponse['DATETIME'];
-    $stringToHash .= $reponse['RESPONSECODE'];
-    $stringToHash .= $reponse['RESPONSETEXT'];
-    $stringToHash .= $this->_terminal['secret'];
+    $reponse = $this->_normalizedReponse;
+    $params = $this->_params;
+    switch ($params['XMLEnclosureTag']) {
+      case 'PAYMENT':
+        $hash = array($this->_terminal['terminal_id'], $params['UNIQUEREF'],
+          $params['AMOUNT'], $reponse['DATETIME'], $reponse['RESPONSECODE'],
+          $reponse['RESPONSETEXT'], $this->_terminal['secret']);
+      break;
+      case 'SECURECARDREGISTRATION':
+      case 'SECURECARDUPDATE':
+        $hash = array($this->_terminal['terminal_id'], $params['MERCHANTREF'], 
+          $reponse['CARDREFERENCE'], $reponse['DATETIME'], $this->_terminal['secret']);
+      break;
+      case 'SECURECARDREMOVAL':
+        $hash = array($this->_terminal['terminal_id'], $params['MERCHANTREF'],
+          $reponse['DATETIME'], $this->_terminal['secret']);
+      break;
+    }
+
+    $stringToHash = implode('', $hash); 
+
     $this->_responseHash = md5($stringToHash);
     return md5($stringToHash);
   }
-
 
   public function controlResponseHash($responseHash) {
     if(isset($responseHash['ERRORSTRING'])) {
       return false;
     }
     else {
-    $this->_normalizedPaymentReponse=$responseHash;
+    $this->_normalizedReponse=$responseHash;
     return ($this->buildResponseHash() == $responseHash['HASH']);
     }
   }
 
-  public function getNormalizedPaymentReponse(){
-    return $this->_normalizedPaymentReponse;
+  public function getNormalizedReponse(){
+    return $this->_normalizedReponse;
   }
-  public function getNormalizedPaymentParams(){
-    return $this->_normalizedPaymentParams;
+  public function getNormalizedParams(){
+    return $this->_normalizedParams;
   }
 
 }

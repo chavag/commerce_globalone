@@ -259,6 +259,7 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     $payment_method = $payment->getPaymentMethod();
 
     $params = [];
+    $params['XMLEnclosureTag'] = 'PAYMENT';
     $params['ORDERID'] = $payment->getOrderId();
 
     $params['AMOUNT'] = number_format($payment->getAmount()->getDecimalAmount(), 2);
@@ -290,8 +291,8 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
       $globalone_post->logRequest();
     }
 
-    $response = $globalone_post->sendPayment(); 
-    if (!isset($response['RESPONSECODE'])) {
+    $response = $globalone_post->sendRequest(); 
+    if (!isset($response['RESPONSECODE']) || !$response['STATUS']) {
       $message = !empty($response['ERRORSTRING']) ? Html::escape($response['ERRORSTRING']) :  t('something went completlly wrong.');
       $message = t('Globalone : ') . $message;
       drupal_set_message($message, 'error');

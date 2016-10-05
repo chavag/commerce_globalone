@@ -3,10 +3,10 @@
 namespace Drupal\commerce_globalone\Integrations;
 
 class GlobaloneFormat {
-  protected $_paymentParams;
-  protected $_paymentResponse;
-  protected $_normalizedPaymentReponse;
-  protected $_normalizedPaymentParams;
+  protected $_params;
+  protected $_response;
+  protected $_normalizedReponse;
+  protected $_normalizedParams;
   protected $_dateTime;
   protected $_terminal;
   protected $_postedHash;
@@ -172,20 +172,29 @@ class GlobaloneFormat {
     );
   }
 
-  public function __construct($paymentParams,$terminal,$postHash,$postDateTime){
-    $this->_paymentParams = $paymentParams;
+  public function getXmlGlobalParams() {
+    return array(
+      'XMLHeader' => array(
+        'version' => '1.0',
+        'encoding' => 'UTF-8',
+      )
+    );
+  }
+
+  public function __construct($params,$terminal,$postHash,$postDateTime){
+    $this->_params = $params;
     $this->_postHash = $postHash;
     $this->_terminal = $terminal;
     $this->_postDateTime = $postDateTime;
-    $this->preparePaymentXML();
+    $this->prepareXML();
   }
 
-  public function setPaymentParams($paymentParams){
-    $this->_paymentParams = $paymentParams;
+  public function setParams($params){
+    $this->_params = $params;
   }
 
-  public function getPaymentParams(){
-    return $this->_paymentParams;
+  public function getparams(){
+    return $this->_params;
   }
   public function setXML($xml){
     $this->_xml = $xml;
@@ -195,12 +204,12 @@ class GlobaloneFormat {
     return $this->_xml;
   }
 
-  public function setNormalizedPaymentParams($paymentParams){
-    $this->_normalizedPaymentParams = $paymentParams;
+  public function setNormalizedparams($params){
+    $this->_normalizedParams = $params;
   }
 
-  public function getNormalizedPaymentParams(){
-    return $this->_normalizedPaymentParams;
+  public function getNormalizedParams(){
+    return $this->_normalizedParams;
   }
 
   public function setTerminal($terminal){
@@ -226,33 +235,34 @@ class GlobaloneFormat {
     return $this->_dateTime;
   }
 
-  public function setPaymentResponse($paymentResponse){
-    $this->_paymentResponse = $paymentResponse;
+  public function setResponse($response){
+    $this->_response = $response;
   }
 
-  public function getPaymentResponse(){
-    return $this->_paymentResponse;
+  public function getResponse(){
+    return $this->_response;
   }
 
-  public function normalizePaymentReponse(){
-    $this->_normalizedPaymentReponse = $this->XMLToArray($this->_paymentResponse);
-    return $this->_normalizedPaymentReponse;
+  public function normalizeReponse(){
+    $this->_normalizedReponse = $this->XMLToArray($this->_response);
+    return $this->_normalizedReponse;
   }
 
-  private function preparePaymentXML(){
-    $xmlStructure = $this->readFields();
+  private function prepareXML() {
+
+    $xmlStructure = $this->getXmlGlobalParams();
 
     $out = '<?xml version="'.$xmlStructure['XMLHeader']['version'].'" encoding="'.$xmlStructure['XMLHeader']['encoding'].'"?>';
 
-    $out .= '<'.$xmlStructure['XMLEnclosureTag'].'>';
+    $out .= '<' . $this->_params['XMLEnclosureTag'] . '>';
 
-    $params = $this->preparePaymentParameter();
+    $params = $this->prepareParameter();
 
     foreach($params as $key=>$param):
       $tag = strtoupper($key);
     $out .= '<'.$tag.'>'.$param.'</'.$tag.'>';
     endforeach;
-    $out .= '</'.$xmlStructure['XMLEnclosureTag'].'>';
+    $out .= '</' . $this->_params['XMLEnclosureTag'].'>';
     $this->_xml = $out;
     return $out;
   }
@@ -281,8 +291,8 @@ class GlobaloneFormat {
     return strtoupper($rcardtype);
   }
 
-  private function preparePaymentParameter(){
-    $params = $this->_paymentParams;
+  private function prepareParameter(){
+    $params = $this->_params;
     $out = array();
 
     $out['ORDERID'] = $params['ORDERID'];
@@ -302,7 +312,7 @@ class GlobaloneFormat {
       $out['DESCRIPTION'] = $params['DESCRIPTION'];
     }
 
-    $this->_normalizedPaymentParams = $out;
+    $this->_normalizedParams = $out;
 
     return $out;
   }
