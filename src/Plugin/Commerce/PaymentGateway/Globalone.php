@@ -3,6 +3,8 @@
 namespace Drupal\commerce_globalone\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_globalone\Integrations\GlobalonePost;
+use Drupal\commerce_globalone\Integrations\GlobalonePostPayment;
+use Drupal\commerce_globalone\Integrations\GlobalonePostPaymentMethod;
 use Drupal\commerce_payment\CreditCard;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
@@ -254,36 +256,9 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     $payment->save();
   }
 
-  public function globalonePostPayment(PaymentInterface $payment) {
-    
-    $payment_method = $payment->getPaymentMethod();
-
-    $params = [];
-    $params['XMLEnclosureTag'] = 'PAYMENT';
-    $params['ORDERID'] = $payment->getOrderId();
-
-    $params['AMOUNT'] = number_format($payment->getAmount()->getDecimalAmount(), 2);
-    $params['CURRENCY'] = $payment->getAmount()->getCurrencyCode();
-    $params['CARDNUMBER'] = $payment_method->card_number->value;
-
-    //@TODO: add CARDHOLDERNAME param
-    $params['CARDHOLDERNAME'] = $payment_method->card_owner->value;
-
-    $params['MONTH'] = $payment_method->card_exp_month->value;
-    $params['YEAR'] = $payment_method->card_exp_year->value;
-    
-    //@TODO: add cvv param
-    $params['CVV'] = $payment_method->card_cvv->value;
-
-    $params['CARDTYPE'] = $payment_method->card_type->value;
-    $params['DESCRIPTION'] = $this->t('GlobalOne payment from drupal commerce 2');
-
+  public function globalonePostParams(GlobalonePost $globalone_post) {
     $settings = $this->getConfiguration();
-
-    $terminal = $this->getMode() == 'live' ?  $this->getLiveTerminalInfo($settings['live']) :
-     $this->getTestTerminalInfo($settings['test']['terminal_id']);
-
-    $globalone_post = new GlobalonePost($terminal, $params);
+      
     if ($settings['log']['response']) {
       $globalone_post->logResponse();
     }
@@ -292,38 +267,9 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     }
 
     $response = $globalone_post->sendRequest(); 
-    if (!isset($response['RESPONSECODE']) || !$response['STATUS']) {
-      $message = !empty($response['ERRORSTRING']) ? Html::escape($response['ERRORSTRING']) :  t('something went completlly wrong.');
-      $message = t('Globalone : ') . $message;
-      drupal_set_message($message, 'error');
-      return FALSE;
-    } 
 
-    $payment->remote_id = $response['UNIQUEREF'];
-    $payment->remote_status = $response['RESPONSETEXT'];
-
-    switch ($response['RESPONSECODE']) {
-      // Approved.
-      case 'A':
-        drupal_set_message(t('Globalone : The payment approved.'));
-        return $payment;
-       break; 
-        // Referred.
-      case 'R':
-        drupal_set_message(t('Globalone : The payment gateway referred authorisation.'), 'error');
-        return FALSE;
-      break;  
-        // Declined or unknown.
-      case 'D':
-      default:
-        drupal_set_message(t('Globalone : The payment failed with the response: @response.', array(
-          '@response' => $response['RESPONSETEXT'],
-        )), 'error');
-      return FALSE;
-      break;
-
-    }
- }
+    return $globalone_post->handleResponse();
+  }
 
   /**
  * Return live terminals.
@@ -401,6 +347,12 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     return $test_terminals[$terminal_id];
   }
 
+  public function getTerminal() {
+    $settings = $this->getConfiguration();
+    return $this->getMode() == 'live' ?  $this->getLiveTerminalInfo($settings['live']) :
+     $this->getTestTerminalInfo($settings['test']['terminal_id']);
+  }
+
   /**
    * {@inheritdoc}
    */
@@ -410,8 +362,10 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
       throw new \InvalidArgumentException('Only payments in  the "authorization" state can be captured.');
     }
 
-    if ($updatedPayment = $this->globalonePostPayment($payment)) {
-      $payment = $updatedPayment;
+    $globalone_post = new globalonePostPayment($this->getTerminal(), $payment); 
+
+    if ($this->globalonePostParams($globalone_post)) {
+      $payment = $globalone_post->getPayment();
       $payment->setCapturedTime(REQUEST_TIME);
       $payment->state = 'capture_completed';
       $payment->save();
@@ -495,6 +449,10 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     $payment_method->card_exp_month = $payment_details['expiration']['month'];
     $payment_method->card_exp_year = $payment_details['expiration']['year'];
     $expires = CreditCard::calculateExpirationTimestamp($payment_details['expiration']['month'], $payment_details['expiration']['year']);
+    
+    $globalone_post = new GlobalonePostPaymentMethod($this->getTerminal(), $payment_method, 'Create');
+
+    $success = $this->globalonePostParams($globalone_post);
     // the remote ID returned by the request.
     $remote_id = '789';
 

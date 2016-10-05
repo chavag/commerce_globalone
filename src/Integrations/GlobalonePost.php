@@ -17,6 +17,7 @@ class GlobalonePost {
   public $mode;
   public $_logRequest = FALSE;
   public $_logResponse = FALSE;
+  public $_resp;
 
   public function __construct($terminal,$params) {
     $this->_terminal = $terminal;
@@ -43,8 +44,8 @@ class GlobalonePost {
       \Drupal::logger('commerce_globalone')->debug('GlobalONE response: !param', array('!param' => '<pre>' . Html::escape(print_r($resp, TRUE)) . '</pre>'));  
     }
     $resp['STATUS'] = $this->controlResponseHash($resp);
+    $this->_resp = $resp;
     return $resp;
-
   }
 
   public function curlXmlRequest(GlobaloneFormat $format) {
@@ -90,7 +91,7 @@ class GlobalonePost {
         if ($this->_terminal['currency'] == 'MCP') {
           $hash[] = $params['CURRENCY'];
         }
-        $hash += array($params['AMOUNT'], $this->_postDateTime, $this->_terminal['secret']);
+        $hash = array_merge($hash, array($params['AMOUNT'], $this->_postDateTime, $this->_terminal['secret']));
       break;
       case 'SECURECARDREGISTRATION':
       case 'SECURECARDUPDATE':
@@ -118,22 +119,22 @@ class GlobalonePost {
   }
 
   public function buildResponseHash() {
-    $reponse = $this->_normalizedReponse;
+    $response = $this->_normalizedReponse;
     $params = $this->_params;
     switch ($params['XMLEnclosureTag']) {
       case 'PAYMENT':
-        $hash = array($this->_terminal['terminal_id'], $params['UNIQUEREF'],
-          $params['AMOUNT'], $reponse['DATETIME'], $reponse['RESPONSECODE'],
-          $reponse['RESPONSETEXT'], $this->_terminal['secret']);
+        $hash = array($this->_terminal['terminal_id'], $response['UNIQUEREF'],
+          $params['AMOUNT'], $response['DATETIME'], $response['RESPONSECODE'],
+          $response['RESPONSETEXT'], $this->_terminal['secret']);
       break;
       case 'SECURECARDREGISTRATION':
       case 'SECURECARDUPDATE':
         $hash = array($this->_terminal['terminal_id'], $params['MERCHANTREF'], 
-          $reponse['CARDREFERENCE'], $reponse['DATETIME'], $this->_terminal['secret']);
+          $response['CARDREFERENCE'], $response['DATETIME'], $this->_terminal['secret']);
       break;
       case 'SECURECARDREMOVAL':
         $hash = array($this->_terminal['terminal_id'], $params['MERCHANTREF'],
-          $reponse['DATETIME'], $this->_terminal['secret']);
+          $response['DATETIME'], $this->_terminal['secret']);
       break;
     }
 
@@ -151,6 +152,11 @@ class GlobalonePost {
     $this->_normalizedReponse=$responseHash;
     return ($this->buildResponseHash() == $responseHash['HASH']);
     }
+  }
+
+  public function handleResponse() {
+    $response = $this->_resp;
+    return TRUE;
   }
 
   public function getNormalizedReponse(){

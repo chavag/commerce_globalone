@@ -291,23 +291,29 @@ class GlobaloneFormat {
     return strtoupper($rcardtype);
   }
 
-  private function prepareParameter(){
+  private function prepareParameter() {
     $params = $this->_params;
-    $out = array();
+    
+    $out = $params;
 
-    $out['ORDERID'] = $params['ORDERID'];
+    unset($out['XMLEnclosureTag']);
+
     $out['TERMINALID'] = $this->_terminal['terminal_id'];
-    $out['AMOUNT'] = $params['AMOUNT'];
     $out['DATETIME'] = $this->_postDateTime;
-    $out['CARDNUMBER'] = $this->cleanCardNumber($params['CARDNUMBER']);
-    $out['CARDTYPE'] = $params['CARDTYPE'];
-    $out['CARDEXPIRY'] = $this->cleanExpiryDate($params['MONTH'],$params['YEAR']);
-    $out['CARDHOLDERNAME'] = $params['CARDHOLDERNAME'];
+    if(isset($params['CARDNUMBER'])) {
+      $out['CARDNUMBER'] = $this->cleanCardNumber($params['CARDNUMBER']);  
+    }
+    
+    if(isset($params['MONTH']) && isset($params['YEAR'])) {
+      $out['CARDEXPIRY'] = $this->cleanExpiryDate($params['MONTH'],$params['YEAR']);
+      unset($out['MONTH'], $out['YEAR']);
+    }
+
     $out['HASH'] = $this->_postHash;
-    $out['CURRENCY'] = $params['CURRENCY'];
+
     $out['TERMINALTYPE'] = 2;
     $out['TRANSACTIONTYPE'] = 7;
-    $out['CVV'] = $params['CVV'];
+
     if (!empty($params['DESCRIPTION'])) {
       $out['DESCRIPTION'] = $params['DESCRIPTION'];
     }
