@@ -4,7 +4,7 @@ namespace Drupal\commerce_globalone\Plugin\Commerce\PaymentMethodType;
 
 use Drupal\commerce\BundleFieldDefinition;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
-use Drupal\commerce_payment\Plugin\Commerce\PaymentMethodType\PaymentMethodTypeBase
+use Drupal\commerce_payment\Plugin\Commerce\PaymentMethodType\PaymentMethodTypeBase;
 
 /**
  * Provides the credit card payment method type.
