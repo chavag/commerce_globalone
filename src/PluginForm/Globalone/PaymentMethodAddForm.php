@@ -33,8 +33,15 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
   protected function validateCreditCardForm(array &$element, FormStateInterface $form_state) {
     parent::validateCreditCardForm($element, $form_state);
     $values = $form_state->getValue($element['#parents']);
-    dpm($values['type']);
-    $form_state->setError($element, $values['type']);
+
+    /** @var \Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\SupportsStoredPaymentMethodsInterface $payment_gateway_plugin */
+    $payment_gateway_plugin = $this->plugin;
+
+    $configuration = $payment_gateway_plugin->getConfiguration();
+
+    if (!in_array($values['type'], $configuration['card_types'])) {
+      $form_state->setError($element, t('Payment gateway can\'t get Card type @type', array('@type' => $values['type'])));  
+    }
   }
 
   /**

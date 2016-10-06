@@ -442,15 +442,10 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     // You might need to do different API requests based on whe ther the
     // payment method is reusable: $payment_method->isReusable().
     // Non-reusable payment methods usually have an expiration timestamp.
-    $payment_method->card_type = $payment_details['type'];
-    $payment_method->card_number = $payment_details['number'];
-    $payment_method->card_owner = $payment_details['owner'];
-    $payment_method->card_cvv = $payment_details['security_code'];
-    $payment_method->card_exp_month = $payment_details['expiration']['month'];
-    $payment_method->card_exp_year = $payment_details['expiration']['year'];
+
     $expires = CreditCard::calculateExpirationTimestamp($payment_details['expiration']['month'], $payment_details['expiration']['year']);
     
-    $globalone_post = new GlobalonePostPaymentMethod($this->getTerminal(), $payment_method, 'Create');
+    $globalone_post = new GlobalonePostPaymentMethod($this->getTerminal(), $payment_method, $payment_details, 'Create');
 
     $success = $this->globalonePostParams($globalone_post);
 

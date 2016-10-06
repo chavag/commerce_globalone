@@ -10,41 +10,44 @@ class GlobalonePostPaymentMethod extends GlobalonePost {
   public $_paymentMethod;
   public $_operation;
 
-  public function __construct($terminal, PaymentMethodInterface $payment_method, $operation) {
+  public function __construct($terminal, PaymentMethodInterface $payment_method, $payment_details, $operation) {
     $this->_terminal = $terminal;
     $this->mode = $terminal['mode'];
     $this->_paymentMethod = $payment_method;
     $this->_operation = $operation;
     $this->_postDateTime = date('d-m-Y:H:i:s').':000';
-    $this->_params = $this->prepareParams($payment_method, $operation);
+    $this->_params = $this->prepareParams($payment_details);
   }
 
   public function getPaymentMethod() {
   	return $this->_paymentMethod;
   }
 
-  public function prepareParams($payment_method, $operation) {
+  public function prepareParams($payment_details) {
+    $operation = $this->_operation;
     $function = 'prepare' . $operation . 'Params';
-    return $this->{$function}($payment_method);
+    return $this->{$function}($payment_details);
   }
 
-  public function prepareCreateParams($payment_method) {
+  public function prepareCreateParams($payment_details) {
+    $payment_method = $this->_paymentMethod;
+
     $params = [];
     $params['XMLEnclosureTag'] = 'SECURECARDREGISTRATION';
     $params['MERCHANTREF'] = uniqid();
-    
-    $params['CARDNUMBER'] = $payment_method->card_number->value;
+
+    $params['CARDNUMBER'] = $payment_details['number'];
 
     //@TODO: add CARDHOLDERNAME param
-    $params['CARDHOLDERNAME'] = $payment_method->card_owner->value;
+    $params['CARDHOLDERNAME'] = $payment_details['owner'];
 
-    $params['MONTH'] = $payment_method->card_exp_month->value;
-    $params['YEAR'] = $payment_method->card_exp_year->value;
+    $params['MONTH'] = $payment_details['expiration']['month'];
+    $params['YEAR'] = $payment_details['expiration']['year'];
     
     //@TODO: add cvv param
-    $params['CVV'] = $payment_method->card_cvv->value;
+    $params['CVV'] = $payment_details['security_code'];
 
-    $params['CARDTYPE'] = $payment_method->card_type->value;
+    $params['CARDTYPE'] = $payment_details['type'];
 
     return $params;
   }

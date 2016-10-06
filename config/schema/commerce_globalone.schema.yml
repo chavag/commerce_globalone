@@ -2,37 +2,32 @@ commerce_payment.commerce_payment_gateway.plugin.globalone:
   type: commerce_payment_gateway_configuration
   mapping:
     test:
-      type: mapping
-        mapping: 
-          cards_info.cards_no:
-            type: sequence
-            label: cards numbers
-          terminal_id:
-            type: text
-            label: Test mode currency
+      cards_info:
+        cards_no:
+          type: sequence
+          label: cards numbers
+        terminal_id:
+          type: text
+          label: Test mode currency
     live:
-      type: mapping
-        mapping:
-          currency:
-            type: string
-            label: Currency
-          terminal_id:
-            type: text
-            label: Terminal ID
-          secret:  
-            type: text
-            label: Secret
+      currency:
+        type: string
+        label: Currency
+      terminal_id:
+        type: text
+        label: Terminal ID
+      secret:  
+        type: text
+        label: Secret
     card_types:
       type: sequence
       label: Credit card types
     log:  
-      type: sequence
-      label: Write logs
-        request: 
-          type: boolean
-          label: Request
-        response: 
-          type: boolean
-          label: Response  
+      request: 
+        type: boolean
+        label: Request
+      response: 
+        type: boolean
+        label: Response  
         
        
