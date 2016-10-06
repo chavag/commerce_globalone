@@ -267,7 +267,7 @@ class GlobaloneFormat {
     return $out;
   }
 
-  private function cleanExpiryDate($month = '',$year = '') {
+  public static function cleanExpiryDate($month = '',$year = '') {
     if(strlen($year)>2):
       $year = substr($year, 2,2);
     endif;
@@ -292,11 +292,10 @@ class GlobaloneFormat {
   }
 
   private function prepareParameter() {
+
     $params = $this->_params;
     
     $out = $params;
-
-    unset($out['XMLEnclosureTag']);
 
     $out['TERMINALID'] = $this->_terminal['terminal_id'];
     $out['DATETIME'] = $this->_postDateTime;
@@ -314,13 +313,40 @@ class GlobaloneFormat {
     $out['TERMINALTYPE'] = 2;
     $out['TRANSACTIONTYPE'] = 7;
 
-    if (!empty($params['DESCRIPTION'])) {
+    if (isset($params['DESCRIPTION'])) {
       $out['DESCRIPTION'] = $params['DESCRIPTION'];
     }
+
+    $out = $this->orderParams($out);
 
     $this->_normalizedParams = $out;
 
     return $out;
+  }
+
+  public function orderParams($out) {
+    switch ($out['XMLEnclosureTag']) {
+      case 'PAYMENT':
+        $sort = array('ORDERID','TERMINALID', 'AMOUNT', 'DATETIME', 
+        'CARDNUMBER', 'CARDTYPE', 'CARDEXPIRY', 'CARDHOLDERNAME', 'HASH',
+        'CURRENCY', 'TERMINALTYPE', 'TRANSACTIONTYPE', 'CVV', 'DESCRIPTION');
+        break;
+      case 'SECURECARDREGISTRATION':
+      case 'SECURECARDUPDATE':
+        $sort = array('MERCHANTREF', 'TERMINALID', 'DATETIME', 'CARDNUMBER', 
+          'CARDEXPIRY', 'CARDTYPE', 'CARDHOLDERNAME', 'HASH');
+        break;  
+    }
+
+    // Arrange the parameters on the right order.
+    $tmp = array();
+    foreach($sort as $key) {
+      if (isset($out[$key])) {
+        $tmp[$key] = $out[$key];  
+      }
+    }
+
+    return $tmp;
   }
 
   public function XMLToArray($xml,$main_heading = '') {

@@ -7,28 +7,28 @@ use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 
 class GlobalonePostPaymentMethod extends GlobalonePost {
   
-  public $_payment_method;
+  public $_paymentMethod;
   public $_operation;
 
   public function __construct($terminal, PaymentMethodInterface $payment_method, $operation) {
     $this->_terminal = $terminal;
     $this->mode = $terminal['mode'];
-    $this->_params = $this->prepareParams($payment_method, $operation);
+    $this->_paymentMethod = $payment_method;
+    $this->_operation = $operation;
     $this->_postDateTime = date('d-m-Y:H:i:s').':000';
-    $this->_payment_method = $payment_mothod;
-    $this->_operation = $_operation;
+    $this->_params = $this->prepareParams($payment_method, $operation);
   }
 
   public function getPaymentMethod() {
-  	return $this->_payment_method;
+  	return $this->_paymentMethod;
   }
 
-  public function prepareParams(PaymentMethodInterface $payment_method, $operation) {
+  public function prepareParams($payment_method, $operation) {
     $function = 'prepare' . $operation . 'Params';
     return $this->{$function}($payment_method);
   }
 
-  public function prepareCreateParams(PaymentMethodInterface $payment_method) {
+  public function prepareCreateParams($payment_method) {
     $params = [];
     $params['XMLEnclosureTag'] = 'SECURECARDREGISTRATION';
     $params['MERCHANTREF'] = uniqid();
@@ -51,34 +51,17 @@ class GlobalonePostPaymentMethod extends GlobalonePost {
 
   public function handleResponse() {
     $approved = parent::handleResponse();
-    if (!isset($response['RESPONSECODE']) || !$response['STATUS']) {
+    $response = $this->_resp;
+    if (!isset($response['CARDREFERENCE']) || !$response['STATUS']) {
       $message = !empty($response['ERRORSTRING']) ? Html::escape($response['ERRORSTRING']) :  t('something went completlly wrong.');
       $message = t('Globalone : ') . $message;
       drupal_set_message($message, 'error');
       return FALSE;
     } 
 
-    switch ($response['RESPONSECODE']) {
-      // Approved.
-      case 'A':
-        drupal_set_message(t('Globalone : The payment approved.'));
-        $this->_payment->remote_id = $response['UNIQUEREF'];
-        $this->_payment->remote_status = $response['RESPONSETEXT'];   
-        return TRUE;
-       break; 
-        // Referred.
-      case 'R':
-        drupal_set_message(t('Globalone : The payment gateway referred authorisation.'), 'error');
-        return FALSE;
-      break;  
-        // Declined or unknown.
-      case 'D':
-      default:
-        drupal_set_message(t('Globalone : The payment failed with the response: @response.', array(
-          '@response' => $response['RESPONSETEXT'],
-        )), 'error');
-      return FALSE;
-      break;
-    }
+    drupal_set_message(t('Globalone : The action successed.'));
+    $this->_paymentMethod->setRemoteId($response['MERCHANTREF']);
+    $this->_paymentMethod->card_reference = $response['CARDREFERENCE']; 
+    return TRUE;   
   }
 }

@@ -25,32 +25,31 @@ class GlobalonePostPayment extends GlobalonePost {
   public function prepareParams(PaymentInterface $payment) {
   	$payment_method = $payment->getPaymentMethod();
 
-    $params = [];
-    $params['XMLEnclosureTag'] = 'PAYMENT';
-    $params['ORDERID'] = $payment->getOrderId();
+  	if ($payment_method->card_reference != '') {
+  		$params = [];
+	    $params['XMLEnclosureTag'] = 'PAYMENT';
+	    $params['ORDERID'] = $payment->getOrderId();
 
-    $params['AMOUNT'] = number_format($payment->getAmount()->getDecimalAmount(), 2);
-    $params['CURRENCY'] = $payment->getAmount()->getCurrencyCode();
-    $params['CARDNUMBER'] = $payment_method->card_number->value;
+	    $params['AMOUNT'] = number_format($payment->getAmount()->getDecimalAmount(), 2);
+	    $params['CURRENCY'] = $payment->getAmount()->getCurrencyCode();
+	    $params['CARDNUMBER'] = $payment_method->card_reference->value;
+	    
+	    //@TODO: add cvv param
+	    $params['CVV'] = $payment_method->card_cvv->value;
 
-    //@TODO: add CARDHOLDERNAME param
-    $params['CARDHOLDERNAME'] = $payment_method->card_owner->value;
+	    $params['CARDTYPE'] = 'SECURECARD';
+	    $params['DESCRIPTION'] = t('GlobalOne payment from drupal commerce 2');
 
-    $params['MONTH'] = $payment_method->card_exp_month->value;
-    $params['YEAR'] = $payment_method->card_exp_year->value;
-    
-    //@TODO: add cvv param
-    $params['CVV'] = $payment_method->card_cvv->value;
+	    return $params;
+  	}
 
-    $params['CARDTYPE'] = $payment_method->card_type->value;
-    $params['DESCRIPTION'] = t('GlobalOne payment from drupal commerce 2');
-
-    return $params;
+  	throw new \InvalidArgumentException(sprintf('card_reference cannot be null'));
   }
 
   public function handleResponse() {
+  	$response = $this->_resp;
   	$approved = parent::handleResponse();
-  	    if (!isset($response['RESPONSECODE']) || !$response['STATUS']) {
+  	if (!isset($response['RESPONSECODE']) || !$response['STATUS']) {
       $message = !empty($response['ERRORSTRING']) ? Html::escape($response['ERRORSTRING']) :  t('something went completlly wrong.');
       $message = t('Globalone : ') . $message;
       drupal_set_message($message, 'error');

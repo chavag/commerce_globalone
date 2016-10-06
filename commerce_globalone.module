@@ -20,7 +20,11 @@ function commerce_globalone_entity_base_field_info(\Drupal\Core\Entity\EntityTyp
       ->setDescription(t('The credit card Cvv number'))
       ->setRequired(TRUE); 
 
-  
-  }	return $fields;
+    $fields['card_reference'] = BundleFieldDefinition::create('string')
+    ->setLabel(t('Card Reference'))
+    ->setDescription(t('The reference to stored card on globalone payments service'))
+    ->setRequired(TRUE);   
+  }	
+  return $fields;
 }
 

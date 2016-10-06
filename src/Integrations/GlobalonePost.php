@@ -96,15 +96,21 @@ class GlobalonePost {
       case 'SECURECARDREGISTRATION':
       case 'SECURECARDUPDATE':
         // set all keys on parameters array, to avoid php errors 
-        $fields = array('CARDNUMBER', 'CARDEXPIRY', 'CARDTYPE', 'CARDHOLDERNAME');
+        $fields = array('CARDNUMBER', 'CARDHOLDERNAME');
         foreach ($fields as $key) {
           if (!isset($params[$key])) {
             $params[$key] = '';
           }
         }
 
+        if (isset($params['MONTH']) && isset($params['YEAR'])) {
+          $expiration = GlobaloneFormat::cleanExpiryDate($params['MONTH'], $params['YEAR']);  
+        } else {
+          $expiration = '';
+        }
+        
         $hash = array($this->_terminal['terminal_id'], $params['MERCHANTREF'], $this->_postDateTime,
-          $params['CARDNUMBER'], $params['CARDEXPIRY'], $params['CARDTYPE'], 
+          $params['CARDNUMBER'], $expiration, $params['CARDTYPE'], 
           $params['CARDHOLDERNAME'], $this->_terminal['secret']);
       break;
       case 'SECURECARDREMOVAL':

@@ -36,7 +36,8 @@ class PaymentMethodAddForm extends BasePaymentMethodAddForm {
     $values = $form_state->getValue($element['#parents']);
     $this->entity->card_owner = $values['owner'];
     $this->entity->card_cvv = $values['security_code'];
-    $this->entity->card_number = $payment_details['number'];
+    $this->entity->card_number = substr($values['number'], -4);
+    $this->entity->card_reference = '';
   }
 
 }

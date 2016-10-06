@@ -442,7 +442,6 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     // payment method is reusable: $payment_method->isReusable().
     // Non-reusable payment methods usually have an expiration timestamp.
     $payment_method->card_type = $payment_details['type'];
-    // Only the last 4 numbers are safe to store.
     $payment_method->card_number = $payment_details['number'];
     $payment_method->card_owner = $payment_details['owner'];
     $payment_method->card_cvv = $payment_details['security_code'];
@@ -453,12 +452,15 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
     $globalone_post = new GlobalonePostPaymentMethod($this->getTerminal(), $payment_method, 'Create');
 
     $success = $this->globalonePostParams($globalone_post);
-    // the remote ID returned by the request.
-    $remote_id = '789';
 
-    $payment_method->setRemoteId($remote_id);
-    $payment_method->setExpiresTime($expires);
-    $payment_method->save();
+    if ($success) {
+      $payment_method = $globalone_post->getPaymentMethod();
+      $payment_method->setExpiresTime($expires);
+      // Only the last 4 numbers are safe to store.
+      $payment_method->card_number = substr($payment_details['number'], -4);
+      $payment_method->save();     
+    }
+    
   }
 
   /**
