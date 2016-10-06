@@ -5,6 +5,7 @@ namespace Drupal\commerce_globalone\Plugin\Commerce\PaymentGateway;
 use Drupal\commerce_globalone\Integrations\GlobalonePost;
 use Drupal\commerce_globalone\Integrations\GlobalonePostPayment;
 use Drupal\commerce_globalone\Integrations\GlobalonePostPaymentMethod;
+use Drupal\commerce_globalone\Plugin\Commerce\PaymentMethodType;
 use Drupal\commerce_payment\CreditCard;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
@@ -29,7 +30,7 @@ use Drupal\Component\Utility\Html;
  *     "add-payment-method" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentMethodAddForm",
  *     "capture-payment" = "Drupal\commerce_globalone\PluginForm\Globalone\PaymentCaptureForm"
  *   },
- *   payment_method_types = {"credit_card"},
+ *   payment_method_types = {"globalone_stored_card"},
  *   credit_card_types = {
  *     "amex", "dinersclub", "discover", "jcb", "maestro", "mastercard", "visa",
  *   },
@@ -458,6 +459,8 @@ class Globalone extends PaymentGatewayBase implements GlobaloneInterface {
       $payment_method->setExpiresTime($expires);
       // Only the last 4 numbers are safe to store.
       $payment_method->card_number = substr($payment_details['number'], -4);
+      unset($payment_method->card_type, $payment_method->card_owner, $payment_method->card_cvv,
+        $payment_method->card_exp_month, $payment_method->card_exp_year);
       $payment_method->save();     
     }
     

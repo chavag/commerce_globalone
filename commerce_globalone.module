@@ -23,8 +23,9 @@ function commerce_globalone_entity_base_field_info(\Drupal\Core\Entity\EntityTyp
     $fields['card_reference'] = BundleFieldDefinition::create('string')
     ->setLabel(t('Card Reference'))
     ->setDescription(t('The reference to stored card on globalone payments service'))
-    ->setRequired(TRUE);   
+    ->setRequired(TRUE);
+       
+    return $fields;
   }	
-  return $fields;
 }
 
