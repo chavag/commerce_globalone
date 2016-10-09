@@ -10,16 +10,6 @@ use Drupal\commerce\BundleFieldDefinition;
 
 function commerce_globalone_entity_base_field_info(\Drupal\Core\Entity\EntityTypeInterface $entity_type) {
   if ($entity_type->id() == 'commerce_payment_method') {
-		$fields['card_owner'] = BundleFieldDefinition::create('string')
-			->setLabel(t('Card Owner'))
-			->setDescription(t('The credit card owner tz.'))
-			->setRequired(TRUE);
-
-    $fields['card_cvv'] = BundleFieldDefinition::create('string')
-      ->setLabel(t('Card Cvv'))
-      ->setDescription(t('The credit card Cvv number'))
-      ->setRequired(TRUE); 
-
     $fields['card_reference'] = BundleFieldDefinition::create('string')
     ->setLabel(t('Card Reference'))
     ->setDescription(t('The reference to stored card on globalone payments service'))
