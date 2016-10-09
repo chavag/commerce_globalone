@@ -5,6 +5,7 @@ namespace Drupal\commerce_globalone\Integrations;
 use Drupal\Component\Utility\Html;
 use Drupal\commerce_payment\Entity\PaymentInterface;
 use Drupal\commerce_payment\Entity\PaymentMethodInterface;
+use Drupal\commerce_price\Price;
 
 class GlobalonePostPayment extends GlobalonePost {
   

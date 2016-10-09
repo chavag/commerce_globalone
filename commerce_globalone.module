@@ -5,7 +5,7 @@ use Drupal\commerce\BundleFieldDefinition;
 /*
  * Implements hook_entity_field_storage_info().
  *
- * Add fields to use with credit card payment method type
+ * Add fields to use with globalone stored card payment method type
  */
 
 function commerce_globalone_entity_base_field_info(\Drupal\Core\Entity\EntityTypeInterface $entity_type) {
