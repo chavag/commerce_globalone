@@ -30,13 +30,17 @@ class ReviewAndPay extends Review {
     $payment_gateways = $this->order->payment_gateway->referencedEntities();
     $payment_gateway = array_shift($payment_gateways);
 
+    $mode = $payment_gateway->getPlugin()->getMode();
+
     $payment_storage = \Drupal::entityTypeManager()->getStorage('commerce_payment');
     $payment = $payment_storage->create([
       'type' => 'payment_default',
       'payment_gateway' => $payment_gateway->id(),
       'payment_method' => $payment_method->id(),
       'uid' => $this->order->getOwnerId(),
-      'order_id' => $this->order->id(),
+      // I added uniq order id on mode test - 
+      // because the regular drupal ids already processed 
+      'order_id' => $mode == 'test' ? substr(uniqid(), 10) : $this->order->id(),
       'amount' => $this->order->getTotalPrice(),
       'state' => 'authorization',
     ]);

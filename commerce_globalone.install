@@ -1,0 +1,11 @@
+<?php
+
+function commerce_globalone_install() {
+	\Drupal::configFactory()->getEditable('commerce_globalone.settings')
+    ->set('globalone_test_url', 'https://testpayments.globalone.me/merchant/xmlpayment')
+    ->save();
+
+	\Drupal::configFactory()->getEditable('commerce_globalone.settings')
+	->set('globalone_live_url', 'https://payments.globalone.me/merchant/xmlpayment')
+	->save();
+}

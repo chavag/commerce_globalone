@@ -31,7 +31,7 @@ class GlobalonePostPayment extends GlobalonePost {
 	    $params['XMLEnclosureTag'] = 'PAYMENT';
 	    $params['ORDERID'] = $payment->getOrderId();
 
-	    $params['AMOUNT'] = number_format($payment->getAmount()->getDecimalAmount(), 2);
+	    $params['AMOUNT'] = number_format($payment->getAmount()->getNumber(), 2);
 	    $params['CURRENCY'] = $payment->getAmount()->getCurrencyCode();
 	    $params['CARDNUMBER'] = $payment_method->card_reference->value;
 	    
